@@ -4,6 +4,7 @@ from collections import deque, defaultdict
 from heapq import heapify, heappush, heappop
 import matplotlib.pyplot as plt
 
+
 def get_neighbors(map: np.array, idx: t.Tuple):
     width = len(map)
     height = len(map[0])
@@ -23,7 +24,7 @@ def get_diagonal_neighbors(map: np.array, idx: t.Tuple) -> t.List:
     """
     Returns neighbor indices along with costs to get to them from map[idx]
     """
-    width = len(map)    
+    width = len(map)
     height = len(map[0])
     cell_cutoff = 0.3
 
@@ -56,13 +57,13 @@ def bfs(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
     graph[start] = list(start)
     q.append(start)
 
-    # Use defaultdict for optimization. 
-    distances={}
+    # Use defaultdict for optimization.
+    distances = {}
     for i in range(len(map)):
         for j in range(len(map[0])):
             distances[(i, j)] = float("inf")
 
-    distances[start]=0
+    distances[start] = 0
 
     if not map[start]:
         print("Start position is non empty!")
@@ -122,21 +123,21 @@ def bfs(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
 
 def dijkstra(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
     visited = set()  # Set of Tuples
-    graph = {}  # Dictionary of tuple keys and list of tuples (undirected connected nodes)
+    graph = {}  # Dictionary of tuple (node) and list (parent)
 
-    # Use defaultdict for optimization. 
-    distances={}
+    # Use defaultdict for optimization.
+    distances = {}
     for i in range(len(map)):
         for j in range(len(map[0])):
             distances[(i, j)] = float("inf")
 
-    distances[start]=0
+    distances[start] = 0
 
     q = []
     heapify(q)
 
     graph[start] = [list(start)]
-    heappush(q, start)
+    heappush(q, (distances[start], start))
 
     if not map[start]:
         print("Start position is non empty!")
@@ -150,16 +151,19 @@ def dijkstra(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
     plt.ion()
 
     while q:
-        curr = heappop(q)
-
-        if curr == goal:
+        curr = heappop(q)  # (Distance from start, node)
+        curr_node = curr[1]
+        if curr_node == goal:
             print("Goal reached!!!!")
+            path_node = curr[1]
             path = []
-            while curr != start:
-                path.append(curr)
-                curr = tuple(graph[curr])
+            while path_node != start:
+                path.append(path_node)
+                path_node = tuple(graph[path_node])
 
-                plt.plot(curr[1], curr[0], "r*")  # puts a red asterisk at the goal
+                plt.plot(
+                    path_node[1], path_node[0], "r*"
+                )  # puts a red asterisk at the goal
                 plt.show()
                 plt.pause(0.000001)
 
@@ -167,27 +171,126 @@ def dijkstra(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
             return path
 
         else:
-            neighbors = get_diagonal_neighbors(map, curr)   # List of Tuples[x, y, increment cost]
+            neighbors = get_diagonal_neighbors(
+                map, curr_node
+            )  # List of Tuples[x, y, increment cost]
             for neighbor in neighbors:
                 neighbor_idx = (neighbor[0], neighbor[1])
-                cost = distances[curr] + neighbor[2]
+                cost = distances[curr_node] + neighbor[2]
 
                 if (neighbor_idx) not in visited:
-                    graph[neighbor_idx] = list(curr)
+                    graph[neighbor_idx] = list(curr_node)
                     distances[neighbor_idx] = cost
                     visited.add(neighbor_idx)
 
                 elif (neighbor_idx) in visited and cost < distances[neighbor_idx]:
-                    graph[neighbor_idx] = list(curr)
-                    distances[neighbor_idx] = cost 
+                    graph[neighbor_idx] = list(curr_node)
+                    distances[neighbor_idx] = cost
 
                 else:
                     continue
 
-                heappush(q, neighbor_idx)
+                heappush(q, (distances[neighbor_idx], neighbor_idx))
 
         plt.plot(goal[1], goal[0], "y*")  # puts a yellow asterisk at the goal
-        plt.plot(curr[1], curr[0], "g*")
+        plt.plot(curr_node[1], curr_node[0], "g*")
+        plt.show()
+        plt.pause(0.000001)
+
+    print("Path to goal could not be found!!")
+    return []
+
+
+def astar(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
+    visited = set()  # Set of Tuples
+    graph = {}  # Dictionary of tuple (node) and list (parent)
+
+    # Use defaultdict for optimization.
+    distances = {}
+    for i in range(len(map)):
+        for j in range(len(map[0])):
+            distances[(i, j)] = float("inf")
+
+    distances[start] = 0
+
+    q = []
+    heapify(q)
+
+    graph[start] = [list(start)]
+    heappush(
+        q,
+        (
+            distances[start]
+            + np.sqrt((goal[0] - start[0]) ** 2 + (goal[1] - start[1]) ** 2),
+            start,
+        ),
+    )
+
+    if not map[start]:
+        print("Start position is non empty!")
+        return []
+
+    if not map[goal]:
+        print("Goal position is non empty!")
+        return []
+
+    plt.imshow(map)  # shows the map
+    plt.ion()
+
+    while q:
+        curr = heappop(q)  # (Distance from start, node)
+        curr_node = curr[1]
+        if curr_node == goal:
+            print("Goal reached!!!!")
+            path_node = curr[1]
+            path = []
+            while path_node != start:
+                path.append(path_node)
+                path_node = tuple(graph[path_node])
+
+                plt.plot(
+                    path_node[1], path_node[0], "r*"
+                )  # puts a red asterisk at the goal
+                plt.show()
+                plt.pause(0.000001)
+
+            path.reverse()
+            return path
+
+        else:
+            neighbors = get_diagonal_neighbors(
+                map, curr_node
+            )  # List of Tuples[x, y, increment cost]
+            for neighbor in neighbors:
+                neighbor_idx = (neighbor[0], neighbor[1])
+                cost = distances[curr_node] + neighbor[2]
+
+                if (neighbor_idx) not in visited:
+                    graph[neighbor_idx] = list(curr_node)
+                    distances[neighbor_idx] = cost
+                    visited.add(neighbor_idx)
+
+                elif (neighbor_idx) in visited and cost < distances[neighbor_idx]:
+                    graph[neighbor_idx] = list(curr_node)
+                    distances[neighbor_idx] = cost
+
+                else:
+                    continue
+
+                heappush(
+                    q,
+                    (
+                        distances[neighbor_idx]
+                        + np.sqrt(
+                            (goal[0] - neighbor_idx[0]) ** 2
+                            + (goal[1] - neighbor_idx[1]) ** 2
+                        ),
+                        neighbor_idx,
+                    ),
+                )
+
+        plt.plot(goal[1], goal[0], "y*")  # puts a yellow asterisk at the goal
+        plt.plot(curr_node[1], curr_node[0], "g*")
         plt.show()
         plt.pause(0.000001)
 
@@ -198,7 +301,7 @@ def dijkstra(map: np.array, start: t.Tuple, goal: t.Tuple) -> t.List[t.Tuple]:
 if __name__ == "__main__":
     rows = 20
     cols = 30
-    np.random.seed(21)
-    map = np.random.rand(rows, cols) < 0.7
+    np.random.seed(22)
+    map = np.random.rand(rows, cols) < 0.9
 
-    path = dijkstra(map, (0, 0), (13, 15))
+    path = astar(map, (0, 0), (13, 15))
